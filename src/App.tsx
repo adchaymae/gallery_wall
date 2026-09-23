@@ -211,6 +211,8 @@ export default function App() {
     return { minX, minY, width, height }
   }, [previewFrames])
 
+  const safeWallPreviewUrl = wallPreviewImage?.url.startsWith('blob:') ? wallPreviewImage.url : undefined
+
   if (view === 'home') {
     return (
       <main className="landing">
@@ -432,9 +434,9 @@ export default function App() {
                   </div>
                 )}
 
-                {wallPreviewImage && (
+                {wallPreviewImage && safeWallPreviewUrl && (
                   <div className="wall-preview-stage">
-                    <img src={wallPreviewImage.url} alt="Uploaded wall preview" />
+                    <img src={safeWallPreviewUrl} alt="Uploaded wall preview" />
 
                     {previewFrames.length > 0 && previewBounds && (
                       <div
