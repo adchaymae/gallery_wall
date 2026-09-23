@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 type ImageItem = { id: string; name: string; url: string; width: number; height: number }
 type Frame = { id: string; x: number; y: number; width: number; height: number; imageId?: string; zoom: number; offsetX: number; offsetY: number }
 type Project = { wallWidth: number; wallHeight: number; dpi: number; frames: Frame[]; images: ImageItem[] }
-type WallPreviewImage = { url: string; name: string; width: number; height: number }
+type WallPreviewImage = { src: string; name: string; width: number; height: number }
 type PreviewArrangement = 'all' | 'selected'
 
 const initial: Project = { wallWidth: 300, wallHeight: 250, dpi: 300, frames: [], images: [] }
@@ -88,12 +88,6 @@ export default function App() {
     localStorage.setItem('framefolk-project', JSON.stringify(project))
   }, [project])
 
-  useEffect(() => {
-    return () => {
-      if (wallPreviewImage?.url) URL.revokeObjectURL(wallPreviewImage.url)
-    }
-  }, [wallPreviewImage?.url])
-
   const update = (patch: Partial<Project>) => setProject(p => ({ ...p, ...patch }))
   const updateFrame = (patch: Partial<Frame>) =>
     selected && setProject(p => ({ ...p, frames: p.frames.map(f => (f.id === selected ? { ...f, ...patch } : f)) }))
@@ -167,25 +161,32 @@ export default function App() {
 
     try {
       const image = await loadImage(url)
-      setWallPreviewImage(previous => {
-        if (previous?.url) URL.revokeObjectURL(previous.url)
-        return { url, name: file.name, width: image.naturalWidth, height: image.naturalHeight }
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Canvas context unavailable')
+      context.drawImage(image, 0, 0)
+
+      setWallPreviewImage({
+        src: canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.94),
+        name: file.name,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
       })
       setPreviewScale(1)
       setPreviewOffsetX(0)
       setPreviewOffsetY(0)
       setStudioView('preview')
     } catch {
-      URL.revokeObjectURL(url)
       setWallPreviewError('We could not read this image file. Please pick a different wall photo.')
+    } finally {
+      URL.revokeObjectURL(url)
     }
   }
 
   const clearWallPreview = () => {
-    setWallPreviewImage(previous => {
-      if (previous?.url) URL.revokeObjectURL(previous.url)
-      return undefined
-    })
+    setWallPreviewImage(undefined)
     setWallPreviewError('')
     setPreviewScale(1)
     setPreviewOffsetX(0)
@@ -210,8 +211,6 @@ export default function App() {
 
     return { minX, minY, width, height }
   }, [previewFrames])
-
-  const safeWallPreviewUrl = wallPreviewImage?.url.startsWith('blob:') ? wallPreviewImage.url : undefined
 
   if (view === 'home') {
     return (
@@ -434,9 +433,9 @@ export default function App() {
                   </div>
                 )}
 
-                {wallPreviewImage && safeWallPreviewUrl && (
+                {wallPreviewImage && (
                   <div className="wall-preview-stage">
-                    <img src={safeWallPreviewUrl} alt="Uploaded wall preview" />
+                    <img src={wallPreviewImage.src} alt="Uploaded wall preview" />
 
                     {previewFrames.length > 0 && previewBounds && (
                       <div
