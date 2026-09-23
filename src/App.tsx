@@ -434,7 +434,7 @@ export default function App() {
 
                 {wallPreviewImage && (
                   <div className="wall-preview-stage">
-                    <img src={wallPreviewImage.url} alt={`Wall preview: ${wallPreviewImage.name}`} />
+                    <img src={wallPreviewImage.url} alt="Uploaded wall preview" />
 
                     {previewFrames.length > 0 && previewBounds && (
                       <div
